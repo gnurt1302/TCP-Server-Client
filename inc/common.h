@@ -8,6 +8,6 @@
 #define handle_error(msg) \
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
-static char buffer[BUFF_SIZE];
+extern char buffer[BUFF_SIZE];
 
 #endif  // _COMMON_H
