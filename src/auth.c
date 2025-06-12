@@ -1,4 +1,5 @@
 #include <stdio.h> 
+#include <stdlib.h>
 #include <netdb.h> 
 #include <netinet/in.h> 
 #include <string.h> 
@@ -14,6 +15,8 @@ bool server_authenticate(SSL *ssl, char *out_username)
 {
     char username[BUFF_SIZE];
     char password[BUFF_SIZE];
+    char file_username[BUFF_SIZE];
+    char file_password[BUFF_SIZE];
     int byte_recv;
 
     const char *auth_req_msg = "Please login (username password)\n";
@@ -36,21 +39,27 @@ bool server_authenticate(SSL *ssl, char *out_username)
     snprintf(password, sizeof(password), "%s", buffer);
     password[strcspn(password, "\r\n")] = '\0';
 
-    // Compare login information
-    if ((strcmp(username, "admin") == 0 && strcmp(password, "1") == 0) ||
-        (strcmp(username, "trung") == 0 && strcmp(password, "1") == 0) || 
-        (strcmp(username, "gnurt") == 0 && strcmp(password, "1") == 0) )  {
-            
-        SSL_write(ssl, auth_success_msg, strlen(auth_success_msg));
-
-        if (out_username)
-            strncpy(out_username, username, BUFF_SIZE - 1);
-        
-        return true;
-    } else {
-        SSL_write(ssl, auth_failed_msg, strlen(auth_failed_msg));
-        return false;
+    // Open user.txt file
+    FILE *fp;
+    fp = fopen(USER_FILE, "r");
+    if (fp == NULL) {
+        handle_error("open users.txt");
     }
+
+    // Compare login information with user file
+    while (fscanf(fp, "%s %s", file_username, file_password) != EOF) {
+        if (strcmp(username, file_username) == 0 && strcmp(password, file_password) == 0) {
+            // Authentication success
+            SSL_write(ssl, auth_success_msg, strlen(auth_success_msg));
+            snprintf(out_username, BUFF_SIZE, "%s", username);
+            fclose(fp);
+            return true;
+        }
+    }
+    // Authentication failed
+    SSL_write(ssl, auth_failed_msg, strlen(auth_failed_msg));
+    fclose(fp);
+    return false;
 }
 
 bool client_authenticate(SSL *ssl)
@@ -87,7 +96,7 @@ bool client_authenticate(SSL *ssl)
         snprintf(auth_result_msg, sizeof(auth_result_msg), "%s", buffer);
         auth_result_msg[strcspn(auth_result_msg, "\n")] = 0;
 
-        printf("%s", auth_result_msg);
+        printf("%s\n", auth_result_msg);
 
         if (strstr(auth_result_msg, "success") != NULL)
             return true;

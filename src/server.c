@@ -16,12 +16,15 @@
 
 int main(void)
 {
-    int server_fd, client_fd, epoll_fd;
+    int server_fd, epoll_fd;
     int nfds;
     struct epoll_event events[MAX_EVENTS];
 
+    // Initialize OpenSSL
     init_openssl();
-    SSL_CTX *context = create_context("certs/server.crt", "certs/server.key");
+
+    // Create SSL context for server
+    SSL_CTX *context = create_server_context("certs/server.crt", "certs/server.key");
     if (!context) {
         fprintf(stderr, "Failed to create SSL context.\n");
         return 1;
@@ -42,14 +45,15 @@ int main(void)
             if (events[n].data.fd == server_fd) {
                 handle_new_client(server_fd, epoll_fd, context);
             } else {
-                client_fd = events[n].data.fd;
-                client_t *client = find_client_by_fd(client_fd);
+                client_t *client = find_client_by_fd(events[n].data.fd);
                 if (client) {
                     handle_exist_client(client, epoll_fd);
                 }
             }
         }
     }
+
+    // Cleanup
     cleanup_openssl();
     close(epoll_fd);
     close(server_fd);

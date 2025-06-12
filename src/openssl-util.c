@@ -16,8 +16,25 @@ void cleanup_openssl()
     EVP_cleanup(); 
 }
 
-SSL_CTX *create_context(const char *cert_file, const char *key_file) {
+SSL_CTX *create_server_context(const char *cert_file, const char *key_file) {
     SSL_CTX *context = SSL_CTX_new(TLS_server_method());
+    if (!context) {
+        perror("Unable to create SSL context");
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    if (SSL_CTX_use_certificate_file(context, cert_file, SSL_FILETYPE_PEM) <= 0 ||
+        SSL_CTX_use_PrivateKey_file(context, key_file, SSL_FILETYPE_PEM) <= 0) {
+            ERR_print_errors_fp(stderr);
+            exit(EXIT_FAILURE);
+    }
+    
+    return context;
+}
+
+SSL_CTX *create_client_context(const char *cert_file, const char *key_file) {
+    SSL_CTX *context = SSL_CTX_new(TLS_client_method());
     if (!context) {
         perror("Unable to create SSL context");
         ERR_print_errors_fp(stderr);

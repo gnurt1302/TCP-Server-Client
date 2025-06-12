@@ -19,9 +19,11 @@ extern int client_count;
 extern int client_capacity;
 
 void add_client(int client_fd, SSL *ssl, const char *username);
-void remove_client(int client_fd);
+void remove_client(client_t *client);
 const char* get_username(int client_fd);
 void print_client(void);
 client_t *find_client_by_fd(int client_fd);
+
+void broadcast_message(const char *message);
 
 #endif // _CLIENT_INFO_H

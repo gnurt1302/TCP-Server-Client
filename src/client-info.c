@@ -34,16 +34,14 @@ void add_client(int client_fd, SSL *ssl, const char *username)
     
 }
 
-void remove_client(int client_fd) 
+void remove_client(client_t *client) 
 {
     for (int i = 0; i < client_count; ++i) {
-        if (clients[i].fd == client_fd) {
-            SSL_shutdown(clients[i].ssl);
-            SSL_free(clients[i].ssl);
+        if (&clients[i] == client) {
             close(clients[i].fd);
-
-            // Ghi đè phần tử bị xóa bằng phần tử cuối
-            clients[i] = clients[client_count - 1];
+            if (i != client_count - 1) {
+                clients[i] = clients[client_count - 1];
+            }
             client_count--;
             return;
         }
@@ -80,4 +78,11 @@ client_t *find_client_by_fd(int client_fd)
         }
     }
     return NULL;
+}
+
+void broadcast_message(const char *message)
+{
+    for (int i = 0; i < client_count; ++i) {
+        SSL_write(clients[i].ssl, message, strlen(message));  
+    }
 }

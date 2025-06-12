@@ -97,6 +97,7 @@ void handle_new_client(int server_fd, int epoll_fd, SSL_CTX *context)
     // Create SSL connection for new client
     SSL *ssl = SSL_new(context);
     SSL_set_fd(ssl, client_fd);
+    
     if (SSL_accept(ssl) <= 0) {
         ERR_print_errors_fp(stderr);
         SSL_free(ssl);
@@ -123,36 +124,31 @@ void handle_new_client(int server_fd, int epoll_fd, SSL_CTX *context)
         handle_error("epoll_ctl");
     }
 
-    printf("User name %s connected \n", get_username(client_fd));
+    printf("Username %s connected \n", get_username(client_fd));
 }
 
 void handle_exist_client(client_t *client, int epoll_fd)
 {
-    char buffer[BUFF_SIZE];
+    char message[2100];
     int byte_recv = SSL_read(client->ssl, buffer, BUFF_SIZE - 1);
 
     if (byte_recv > 0) {  // Client sent message
         buffer[byte_recv] = '\0';
-        printf("[%s]: %s", client->username, buffer);
+        printf("[%s]: %s\n", client->username, buffer);
 
         // Echo back to client
-        SSL_write(client->ssl, buffer, byte_recv);
+        // SSL_write(client->ssl, buffer, byte_recv);
+        snprintf(message, sizeof(message), "[%s]: %s\n", client->username, buffer);
+        broadcast_message(message);
 
     } else {
         int err = SSL_get_error(client->ssl, byte_recv);
         if (err == SSL_ERROR_ZERO_RETURN || err == SSL_ERROR_SYSCALL) {
-            printf("User %s disconnected.\n", client->username);
+            printf("Username %s disconnected.\n", client->username);
 
             // Remove from epoll
             epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client->fd, NULL);
-
-            // Clean up SSL and socket
-            SSL_shutdown(client->ssl);
-            SSL_free(client->ssl);
-            close(client->fd);
-
-            remove_client(client->fd);
-            free(client);  // If allocated with malloc
+            remove_client(client);
         } else {
             ERR_print_errors_fp(stderr);
         }
